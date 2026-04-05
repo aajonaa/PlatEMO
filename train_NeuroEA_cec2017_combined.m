@@ -203,9 +203,8 @@ function best_fitness = evaluate_neuroea_on_problem(problem_class, D, pop_size, 
 
 rng(seed);
 
-% Create problem instance
+% Create problem instance - CEC2017 problems have fixed D, so we use them as-is
 problem = feval(problem_class);
-problem.D = D;
 problem.maxFE = max_fe;
 
 % Create fresh blocks for this evaluation
