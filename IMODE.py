@@ -93,7 +93,7 @@ class OriginalIMODE(Optimizer):
     def initialize_variables(self):
         """Initialize algorithm-specific variables"""
         # Memory for CR and F adaptation
-        self.memory_size = 20 * self.problem.D
+        self.memory_size = 20 * self.problem.n_dims
         self.MCR = np.ones(self.memory_size) * self.cr_mean
         self.MF = np.ones(self.memory_size) * self.f_mean
         self.k = 0  # Current memory index
@@ -212,24 +212,24 @@ class OriginalIMODE(Optimizer):
         
         if self.generator.random() < 0.4:
             # Uniform crossover
-            site = self.generator.random((N, self.problem.D)) > cr_values[:, None]
+            site = self.generator.random((N, self.problem.n_dims)) > cr_values[:, None]
             result = np.where(site, pop_dec, off_dec)
         else:
             # Segmented crossover
             result = off_dec.copy()
             for i in range(N):
                 # Random first position
-                p1 = self.generator.integers(0, self.problem.D)
+                p1 = self.generator.integers(0, self.problem.n_dims)
                 # Find length
                 p2 = np.searchsorted(
-                    np.concatenate([[0], np.where(self.generator.random(self.problem.D) > cr_values[i])[0]]),
+                    np.concatenate([[0], np.where(self.generator.random(self.problem.n_dims) > cr_values[i])[0]]),
                     p1 + 1
                 ) - p1
                 
-                if p2 < self.problem.D:
+                if p2 < self.problem.n_dims:
                     # Copy from original to result
                     indices = np.arange(p2)
-                    result[i, (p1 + indices) % self.problem.D] = pop_dec[i, (p1 + indices) % self.problem.D]
+                    result[i, (p1 + indices) % self.problem.n_dims] = pop_dec[i, (p1 + indices) % self.problem.n_dims]
         
         return result
 
