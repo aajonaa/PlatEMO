@@ -37,7 +37,7 @@ addpath(fullfile(current_dir, 'PlatEMO', 'GUI'));
 %% ========================================================================
 
 % Trained model file (output from Stage 2)
-TRAINED_MODEL_FILE = 'trained_NeuroEA_F9_D30_stage2_from_f1.mat';
+TRAINED_MODEL_FILE = 'trained_NeuroEA_CEC2017_F9_D30_stage2_from_f1.mat';
 
 % Test problem configuration
 TEST_PROBLEM_CLASS = @CEC2017_F1;                % Change to @CEC2017_F1, @CEC2017_F4, @CEC2017_F9, etc.
