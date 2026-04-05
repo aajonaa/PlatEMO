@@ -44,9 +44,10 @@ INNER_GEN = 100;
 INNER_MAX_FE = INNER_POP * INNER_GEN;  % = 3000
 
 % Outer GA trainer (parameter tuner)
-TRAINER_POP = 50;
-TRAINER_MAX_EVALS = 5000;
-NUM_RUNS_PER_CANDIDATE = 3;  % Mean fitness over 3 runs
+TRAINER_POP = 20;
+TRAINER_GEN = 25;
+TRAINER_MAX_EVALS = TRAINER_POP * TRAINER_GEN;  % = 500
+NUM_RUNS_PER_CANDIDATE = 1;  % Single run per candidate (budget-constrained)
 SEED_BASE = 67890;            % Different seed base for Stage 2
 
 % Input and output files
@@ -61,8 +62,8 @@ fprintf('Output (Stage 2 trained):    %s\n', OUTPUT_FILE);
 fprintf('\nPAPER-ALIGNED SETTINGS:\n');
 fprintf('  Inner NeuroEA:   pop=%d, generations=%d, maxFE=%d\n', ...
     INNER_POP, INNER_GEN, INNER_MAX_FE);
-fprintf('  Outer GA trainer: pop=%d, max_evals=%d\n', TRAINER_POP, TRAINER_MAX_EVALS);
-fprintf('  Fitness metric:  mean best objective over %d independent runs\n', NUM_RUNS_PER_CANDIDATE);
+fprintf('  Outer GA trainer: pop=%d, generations=%d, max_evals=%d\n', TRAINER_POP, TRAINER_GEN, TRAINER_MAX_EVALS);
+fprintf('  Fitness metric:  best objective from %d independent run\n', NUM_RUNS_PER_CANDIDATE);
 fprintf('  Initial population: from Stage 1 best parameters (mutation-based variation)\n');
 fprintf('%s\n\n', repmat('=', 1, 80));
 

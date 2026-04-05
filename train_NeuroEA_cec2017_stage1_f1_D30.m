@@ -46,9 +46,10 @@ INNER_GEN = 100;
 INNER_MAX_FE = INNER_POP * INNER_GEN;  % = 3000
 
 % Outer GA trainer (parameter tuner)
-TRAINER_POP = 50;
-TRAINER_MAX_EVALS = 5000;
-NUM_RUNS_PER_CANDIDATE = 3;  % Mean fitness over 3 runs
+TRAINER_POP = 20;
+TRAINER_GEN = 25;
+TRAINER_MAX_EVALS = TRAINER_POP * TRAINER_GEN;  % = 500
+NUM_RUNS_PER_CANDIDATE = 1;  % Single run per candidate (budget-constrained)
 
 % Output file
 OUTPUT_FILE = sprintf('trained_NeuroEA_%s_D%d_stage%d.mat', PROBLEM_NAME, DIMENSION, STAGE);
@@ -59,8 +60,8 @@ fprintf('%s\n', repmat('=', 1, 80));
 fprintf('\nPAPER-ALIGNED SETTINGS (reduced budget):\n');
 fprintf('  Inner NeuroEA:   pop=%d, generations=%d, maxFE=%d\n', ...
     INNER_POP, INNER_GEN, INNER_MAX_FE);
-fprintf('  Outer GA trainer: pop=%d, max_evals=%d\n', TRAINER_POP, TRAINER_MAX_EVALS);
-fprintf('  Fitness metric:  mean best objective over %d independent runs\n', NUM_RUNS_PER_CANDIDATE);
+fprintf('  Outer GA trainer: pop=%d, generations=%d, max_evals=%d\n', TRAINER_POP, TRAINER_GEN, TRAINER_MAX_EVALS);
+fprintf('  Fitness metric:  best objective from %d independent run\n', NUM_RUNS_PER_CANDIDATE);
 fprintf('  Architecture:    11-block NeuroEA (paper-faithful)\n');
 fprintf('  Node order:      [P, T1, T2, T3, E1, E2, E3, E4, C, M, S]\n');
 fprintf('\nOutput will be saved to: %s\n', OUTPUT_FILE);
