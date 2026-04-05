@@ -75,15 +75,7 @@ fprintf('    Best fitness: %.6e\n', best_fitness_stage2);
 
 % Assign trained parameters to blocks
 fprintf('\nAssigning trained parameters to blocks...\n');
-param_idx = 1;
-for block_idx = 1:length(Blocks)
-    num_block_params = length(Blocks(block_idx).lower);
-    if num_block_params > 0
-        Blocks(block_idx).parameter = best_params_stage2(param_idx:param_idx+num_block_params-1);
-        Blocks(block_idx).ParameterAssign();
-    end
-    param_idx = param_idx + num_block_params;
-end
+Blocks.ParameterSet(best_params_stage2);
 
 fprintf('\n%s\n', repmat('=', 1, 80));
 fprintf('TEST CONFIGURATION\n');
