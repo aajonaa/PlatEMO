@@ -1,136 +1,144 @@
-%% load_trained_NeuroEA_and_run.m
-% Load a trained NeuroEA model and run it on a test problem
+%% load_trained_NeuroEA_and_run.m (Paper-aligned version)
+% Load trained NeuroEA model (from Stage 2) and run on a test problem
 %
-% Usage:
-%   [best_fitness, final_pop] = load_trained_NeuroEA_and_run(model_file, test_problem_class, D, pop_size, max_fe, seed)
+% This script:
+% 1. Loads the trained model from Stage 2 training
+% 2. Runs the trained NeuroEA on a specified test problem
+% 3. Displays performance statistics
 %
-% Inputs:
-%   model_file           - Path to .mat file with saved trained model
-%   test_problem_class   - Class handle for test problem (e.g., @CEC2017_F1)
-%   D                    - Dimension for test problem (optional, default=30)
-%   pop_size             - Population size (optional, default=30)
-%   max_fe               - Max function evaluations (optional, default=3000)
-%   seed                 - Random seed (optional, default=42)
-%
-% Outputs:
-%   best_fitness         - Best objective value achieved
-%   final_pop            - Final population object
-%
-% Example 1: Run trained f1 model on f4 test problem
-%   load_trained_NeuroEA_and_run('trained_NeuroEA_CEC2017_F1_D30.mat', @CEC2017_F4);
-%
-% Example 2: Run with custom settings
-%   load_trained_NeuroEA_and_run('trained_NeuroEA_CEC2017_F1_D30.mat', @CEC2017_F9, 30, 30, 3000, 999);
+% Configuration:
+%   - TRAINED_MODEL_FILE: Path to trained model .mat file
+%   - TEST_PROBLEM_CLASS: Problem handle (e.g., @CEC2017_F1)
+%   - TEST_PROBLEM_NAME: Display name
+%   - TEST_DIMENSION: Problem dimension
+%   - NUM_TEST_RUNS: How many independent runs to execute
+%   - TEST_MAX_FE: Budget per run
 
-function [best_fitness, final_pop, details] = load_trained_NeuroEA_and_run(model_file, test_problem_class, varargin)
+clear all; clc;
 
-%% Parse arguments
-if nargin < 2
-    error('Usage: load_trained_NeuroEA_and_run(model_file, test_problem_class, [D, pop_size, max_fe, seed])');
-end
+%% Add PlatEMO to path
+current_dir = fileparts(mfilename('fullpath'));
+addpath(fullfile(current_dir, 'PlatEMO'));
+addpath(fullfile(current_dir, 'PlatEMO', 'Algorithms'));
+addpath(fullfile(current_dir, 'PlatEMO', 'Algorithms', 'NeuroEA'));
+addpath(fullfile(current_dir, 'PlatEMO', 'Metrics'));
+addpath(fullfile(current_dir, 'PlatEMO', 'Problems'));
+addpath(fullfile(current_dir, 'PlatEMO', 'Problems', 'Single-objective optimization'));
+addpath(fullfile(current_dir, 'PlatEMO', 'Problems', 'Single-objective optimization', 'CEC 2017'));
 
-% Optional arguments with defaults
-D = 30;
-pop_size = 30;
-max_fe = 3000;
-seed = 42;
+%% ========================================================================
+%% CONFIGURATION - EDIT THESE TO CHANGE TEST PROBLEM
+%% ========================================================================
 
-if nargin >= 3 && ~isempty(varargin{1})
-    D = varargin{1};
-end
-if nargin >= 4 && ~isempty(varargin{2})
-    pop_size = varargin{2};
-end
-if nargin >= 5 && ~isempty(varargin{3})
-    max_fe = varargin{3};
-end
-if nargin >= 6 && ~isempty(varargin{4})
-    seed = varargin{4};
-end
+% Trained model file (output from Stage 2)
+TRAINED_MODEL_FILE = 'trained_NeuroEA_F9_D30_stage2_from_f1.mat';
+
+% Test problem configuration
+TEST_PROBLEM_CLASS = @CEC2017_F1;                % Change to @CEC2017_F1, @CEC2017_F4, @CEC2017_F9, etc.
+TEST_PROBLEM_NAME = 'CEC2017_F1';               % Display name
+TEST_DIMENSION = 30;                            % Dimension
+
+% Test settings
+NUM_TEST_RUNS = 5;                              % Number of independent test runs
+TEST_MAX_FE = 3000;                             % Budget per run
 
 %% Load trained model
-fprintf('\n%s\n', repmat('=',1,70));
-fprintf('LOADING TRAINED NEUROEA MODEL\n');
-fprintf('%s\n', repmat('=',1,70));
-fprintf('Model file: %s\n', model_file);
+fprintf('\n%s\n', repmat('=', 1, 80));
+fprintf('LOAD AND RUN TRAINED NEUROEA MODEL\n');
+fprintf('%s\n', repmat('=', 1, 80));
 
-if ~exist(model_file, 'file')
-    error('Model file not found: %s', model_file);
+fprintf('\nLoading trained model from: %s\n', TRAINED_MODEL_FILE);
+
+if ~isfile(TRAINED_MODEL_FILE)
+    error('Trained model file not found: %s\nPlease run Stage 1 and Stage 2 training first.', TRAINED_MODEL_FILE);
 end
 
-load(model_file, 'Blocks', 'Graph', 'best_params', 'PROBLEM_NAME', 'DIMENSION');
+model_data = load(TRAINED_MODEL_FILE);
 
-fprintf('Loaded from training on: %s (D=%d)\n', PROBLEM_NAME, DIMENSION);
+Blocks = model_data.Blocks;
+Graph = model_data.Graph;
+best_params_stage2 = model_data.best_params_stage2;
+best_params_stage1 = model_data.best_params_stage1;
+best_fitness_stage1 = model_data.best_fitness_stage1;
+best_fitness_stage2 = model_data.best_fitness_stage2;
 
-%% Create test problem
-test_problem = feval(test_problem_class);
-test_problem.D = D;
-test_problem.maxFE = max_fe;
+fprintf('  Stage 1 trained on: F1\n');
+fprintf('    Best fitness: %.6e\n', best_fitness_stage1);
+fprintf('  Stage 2 trained on: %s\n', model_data.PROBLEM_NAME);
+fprintf('    Best fitness: %.6e\n', best_fitness_stage2);
 
-fprintf('\nTest problem: %s\n', class(test_problem));
-fprintf('Test dimension: %d\n', D);
-fprintf('Test population size: %d\n', pop_size);
-fprintf('Test max FE: %d\n', max_fe);
-fprintf('Random seed: %d\n\n', seed);
-
-%% Set block parameters from trained model
-Blocks_test = [
-    Block_Population()
-    Block_Tournament(60, 10)
-    Block_Tournament(60, 10)
-    Block_Tournament(60, 10)
-    Block_Exchange(3)
-    Block_Exchange(3)
-    Block_Exchange(3)
-    Block_Exchange(3)
-    Block_Crossover(2, 5)
-    Block_Mutation(5)
-    Block_Selection(30)
-];
-Blocks_test.ParameterSet(best_params);
-
-%% Run NeuroEA with trained parameters
-rng(seed);
-
-fprintf('%s\n', repmat('=',1,70));
-fprintf('RUNNING TRAINED NEUROEA ON TEST PROBLEM\n');
-fprintf('%s\n\n', repmat('=',1,70));
-
-% Create algorithm
-algo = NeuroEA('parameter', {Blocks_test, Graph});
-
-% Solve
-start_time = tic;
-algo.Solve(test_problem);
-elapsed_time = toc(start_time);
-
-%% Extract results
-if ~isempty(algo.result)
-    final_pop = algo.result{end, 2};
-    best_fitness = min(final_pop.objs);
-else
-    final_pop = [];
-    best_fitness = inf;
+% Assign trained parameters to blocks
+fprintf('\nAssigning trained parameters to blocks...\n');
+param_idx = 1;
+for block_idx = 1:length(Blocks)
+    num_block_params = length(Blocks(block_idx).lower);
+    if num_block_params > 0
+        Blocks(block_idx).parameter = best_params_stage2(param_idx:param_idx+num_block_params-1);
+        Blocks(block_idx).ParameterAssign();
+    end
+    param_idx = param_idx + num_block_params;
 end
 
-%% Display results
-fprintf('%s\n', repmat('=',1,70));
-fprintf('INFERENCE COMPLETE\n');
-fprintf('%s\n', repmat('=',1,70));
-fprintf('Best fitness: %.6e\n', best_fitness);
-fprintf('Function evaluations used: %d / %d\n', test_problem.FE, test_problem.maxFE);
-fprintf('Runtime: %.2f seconds\n', elapsed_time);
-fprintf('%s\n\n', repmat('=',1,70));
+fprintf('\n%s\n', repmat('=', 1, 80));
+fprintf('TEST CONFIGURATION\n');
+fprintf('%s\n', repmat('=', 1, 80));
 
-%% Build details structure
-details = struct();
-details.best_fitness = best_fitness;
-details.final_population = final_pop;
-details.function_evals = test_problem.FE;
-details.runtime = elapsed_time;
-details.trained_on = PROBLEM_NAME;
-details.test_on = class(test_problem);
-details.seed = seed;
-details.D = D;
+fprintf('\nTest problem: %s (D=%d)\n', TEST_PROBLEM_NAME, TEST_DIMENSION);
+fprintf('Number of test runs: %d\n', NUM_TEST_RUNS);
+fprintf('Max function evaluations per run: %d\n\n', TEST_MAX_FE);
 
+%% ========================================================================
+%% RUN ON TEST PROBLEM
+%% ========================================================================
+
+fprintf('Running trained NeuroEA on %s...\n\n', TEST_PROBLEM_NAME);
+
+test_best_objs = [];
+
+for run_idx = 1:NUM_TEST_RUNS
+    fprintf('  Run %d/%d: ', run_idx, NUM_TEST_RUNS);
+    
+    % Create problem
+    TestProblem = feval(TEST_PROBLEM_CLASS, TEST_DIMENSION);
+    
+    % Run NeuroEA with trained parameters
+    [best_obj, ~, ~, ~] = NeuroEA(TestProblem, Blocks, Graph, TEST_MAX_FE, 1);
+    
+    test_best_objs = [test_best_objs; best_obj];
+    
+    fprintf('best=%.6e\n', best_obj);
 end
+
+%% ========================================================================
+%% RESULTS SUMMARY
+%% ========================================================================
+
+mean_test_best = mean(test_best_objs);
+std_test_best = std(test_best_objs);
+median_test_best = median(test_best_objs);
+min_test_best = min(test_best_objs);
+max_test_best = max(test_best_objs);
+
+fprintf('\n%s\n', repmat('=', 1, 80));
+fprintf('TEST RESULTS ON %s\n', TEST_PROBLEM_NAME);
+fprintf('%s\n', repmat('=', 1, 80));
+
+fprintf('\nNumber of runs: %d\n', NUM_TEST_RUNS);
+fprintf('Max FE per run: %d\n', TEST_MAX_FE);
+
+fprintf('\nBest objective value statistics:\n');
+fprintf('  Mean:   %.6e\n', mean_test_best);
+fprintf('  Std:    %.6e\n', std_test_best);
+fprintf('  Median: %.6e\n', median_test_best);
+fprintf('  Min:    %.6e\n', min_test_best);
+fprintf('  Max:    %.6e\n', max_test_best);
+
+fprintf('\nTraining history (for reference):\n');
+fprintf('  Stage 1 (on F1):               %.6e\n', best_fitness_stage1);
+fprintf('  Stage 2 (on F9, transfer:      %.6e\n', best_fitness_stage2);
+fprintf('  Test (on %s, mean):           %.6e\n', TEST_PROBLEM_NAME, mean_test_best);
+
+fprintf('\n%s\n', repmat('=', 1, 80));
+fprintf('Test complete.\n');
+fprintf('%s\n\n', repmat('=', 1, 80));
+
