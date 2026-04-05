@@ -122,13 +122,21 @@ class OriginalIMODE(Optimizer):
         pos_rand = self.generator.uniform(self.problem.lb, self.problem.ub)
         return np.where(condition, solution, pos_rand)
 
-    def update_population_size(self) -> int:
+    def update_population_size(self, epoch: int) -> int:
         """
-        Reduce population size linearly over generations
-        N(t) = ceil((minN - N0) * t/maxFE) + N0
+        Reduce population size linearly over generations based on epoch
+        N(t) = max(minN, ceil(pop_size - (pop_size - minN) * epoch / epoch_max))
+        
+        Args:
+            epoch: Current epoch number (0 to epoch-1)
+        
+        Returns:
+            Updated population size
         """
-        N = max(self.minN, 
-                int(np.ceil((self.minN - self.pop_size) * self.problem.FE / self.problem.maxFE)) + self.pop_size)
+        # Linear reduction from pop_size to minN over the training period
+        progress = epoch / max(1, self.epoch - 1) if self.epoch > 1 else 1.0
+        N = max(self.minN,
+                int(np.ceil(self.pop_size - (self.pop_size - self.minN) * progress)))
         return N
 
     def select_parent_set(self, population: list, fraction: float) -> np.ndarray:
@@ -144,7 +152,7 @@ class OriginalIMODE(Optimizer):
         
         # Select best individuals
         best_indices = np.argsort(fitness)[:pbest_size]
-        return population[best_indices].decs
+        return np.array([population[idx].solution for idx in best_indices])
 
     def generate_cr_values(self, N: int) -> np.ndarray:
         """
@@ -338,34 +346,35 @@ class OriginalIMODE(Optimizer):
 
     def evolve(self, epoch: int) -> None:
         """
-        Main evolution loop of IMODE
+        Main evolution loop of IMODE (one iteration)
         
         Flow:
-            1. Reduce population size
+            1. Reduce population size (if needed)
             2. Maintain archive
             3. Generate CR and F values
             4. Select operators
             5. Generate offspring via mutation and crossover
             6. Select and replace individuals
             7. Update memory and operator probabilities
+        
+        Args:
+            epoch: Current generation number
         """
-        # Update population size
-        N = self.update_population_size()
+        # Update population size based on progress
+        N = self.update_population_size(epoch)
         
         if N < len(self.pop):
-            # Reduce population size
+            # Reduce population size - keep best individuals
             fitness = np.array([agent.target.fitness for agent in self.pop])
             best_indices = np.argsort(fitness)[:N]
-            self.pop = self.pop[best_indices]
-        elif N > len(self.pop):
-            # Should not happen with decreasing N, but handle edge case
-            pass
+            self.pop = [self.pop[i] for i in best_indices]
         
-        # Maintain archive
+        # Maintain archive size
         if len(self.archive) > 0:
-            archive_size = min(len(self.archive), int(np.ceil(self.aRate * N)))
-            archive_indices = self.generator.choice(len(self.archive), archive_size, replace=False)
-            self.archive = [self.archive[i] for i in archive_indices]
+            max_archive_size = max(1, int(np.ceil(self.aRate * len(self.pop))))
+            if len(self.archive) > max_archive_size:
+                archive_indices = self.generator.choice(len(self.archive), max_archive_size, replace=False)
+                self.archive = [self.archive[i] for i in archive_indices]
         
         # Get population decisions
         pop_dec = np.array([agent.solution for agent in self.pop])
