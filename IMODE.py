@@ -289,19 +289,33 @@ class OriginalIMODE(Optimizer):
                      success_rates: np.ndarray) -> None:
         """
         Update CR and F memory based on successful solutions
+        
+        Uses safe division to avoid numerical warnings when values are near zero.
         """
         if len(success_indices) > 0:
             # Weighted average
             weights = success_rates[success_indices]
             weights = weights / np.sum(weights)
             
-            # Update MCR
-            self.MCR[self.k] = np.sum(weights * cr_values[success_indices]**2) / \
-                              np.sum(weights * cr_values[success_indices])
+            # Update MCR with safe division
+            cr_success = cr_values[success_indices]
+            numerator_cr = np.sum(weights * cr_success**2)
+            denominator_cr = np.sum(weights * cr_success)
             
-            # Update MF
-            self.MF[self.k] = np.sum(weights * f_values[success_indices]**2) / \
-                             np.sum(weights * f_values[success_indices])
+            if denominator_cr > 1e-10:  # Safe threshold to avoid division by zero
+                self.MCR[self.k] = numerator_cr / denominator_cr
+            else:
+                self.MCR[self.k] = 0.5  # Reset to default if near zero
+            
+            # Update MF with safe division
+            f_success = f_values[success_indices]
+            numerator_f = np.sum(weights * f_success**2)
+            denominator_f = np.sum(weights * f_success)
+            
+            if denominator_f > 1e-10:  # Safe threshold to avoid division by zero
+                self.MF[self.k] = numerator_f / denominator_f
+            else:
+                self.MF[self.k] = 0.5  # Reset to default if near zero
             
             # Clip to valid range
             self.MCR[self.k] = np.clip(self.MCR[self.k], 0, 1)
