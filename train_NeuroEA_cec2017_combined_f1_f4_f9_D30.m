@@ -13,6 +13,16 @@
 
 clear; clc;
 
+%% Add PlatEMO to path
+current_dir = fileparts(mfilename('fullpath'));
+addpath(fullfile(current_dir, 'PlatEMO'));
+addpath(fullfile(current_dir, 'PlatEMO', 'Algorithms'));
+addpath(fullfile(current_dir, 'PlatEMO', 'Algorithms', 'NeuroEA'));
+addpath(fullfile(current_dir, 'PlatEMO', 'Metrics'));
+addpath(fullfile(current_dir, 'PlatEMO', 'Problems'));
+addpath(fullfile(current_dir, 'PlatEMO', 'Problems', 'Single-objective optimization'));
+addpath(fullfile(current_dir, 'PlatEMO', 'Problems', 'Single-objective optimization', 'CEC 2017'));
+
 %% Configuration
 PROBLEM_CLASSES = {@CEC2017_F1, @CEC2017_F4, @CEC2017_F9};
 PROBLEM_NAMES = {'CEC2017_F1', 'CEC2017_F4', 'CEC2017_F9'};
