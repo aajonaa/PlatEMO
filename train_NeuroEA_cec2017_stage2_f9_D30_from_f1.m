@@ -44,8 +44,8 @@ INNER_GEN = 100;
 INNER_MAX_FE = INNER_POP * INNER_GEN;  % = 3000
 
 % Outer GA trainer (parameter tuner)
-TRAINER_POP = 20;
-TRAINER_GEN = 25;
+TRAINER_POP = 5;
+TRAINER_GEN = 100;
 TRAINER_MAX_EVALS = TRAINER_POP * TRAINER_GEN;  % = 500
 NUM_RUNS_PER_CANDIDATE = 1;  % Single run per candidate (budget-constrained)
 SEED_BASE = 67890;            % Different seed base for Stage 2
@@ -180,7 +180,7 @@ for candidate_idx = 1:TRAINER_POP
         candidate_blocks.ParameterSet(population(candidate_idx, :));
         
         % Run NeuroEA on the F9 problem
-        Problem = feval(PROBLEM_CLASS, DIMENSION);
+        Problem = feval(PROBLEM_CLASS, 'D', DIMENSION);
         Problem.maxFE = INNER_MAX_FE;
         
         % Create NeuroEA with configured blocks and Graph
