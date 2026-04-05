@@ -20,10 +20,12 @@ current_dir = fileparts(mfilename('fullpath'));
 addpath(fullfile(current_dir, 'PlatEMO'));
 addpath(fullfile(current_dir, 'PlatEMO', 'Algorithms'));
 addpath(fullfile(current_dir, 'PlatEMO', 'Algorithms', 'NeuroEA'));
+addpath(fullfile(current_dir, 'PlatEMO', 'Algorithms', 'Utility functions'));
 addpath(fullfile(current_dir, 'PlatEMO', 'Metrics'));
 addpath(fullfile(current_dir, 'PlatEMO', 'Problems'));
 addpath(fullfile(current_dir, 'PlatEMO', 'Problems', 'Single-objective optimization'));
 addpath(fullfile(current_dir, 'PlatEMO', 'Problems', 'Single-objective optimization', 'CEC 2017'));
+addpath(fullfile(current_dir, 'PlatEMO', 'GUI'));
 
 %% ========================================================================
 %% STAGE 1 CONFIGURATION
@@ -94,15 +96,9 @@ fprintf('  C  = Block_Crossover(2, 5)     [30 params]\n');
 fprintf('  M  = Block_Mutation(5)         [10 params]\n');
 fprintf('  S  = Block_Selection(30)       [0 params]\n');
 
-% Get total number of parameters
-param_lowers_cell = {Blocks.lower};
-param_uppers_cell = {Blocks.upper};
-param_lowers = [];
-param_uppers = [];
-for i = 1:length(Blocks)
-    param_lowers = [param_lowers; Blocks(i).lower];
-    param_uppers = [param_uppers; Blocks(i).upper];
-end
+% Get total number of parameters (use concatenation method)
+param_lowers = Blocks.lowers();
+param_uppers = Blocks.uppers();
 num_params = length(param_lowers);
 
 fprintf('\nTotal tunable parameters: %d\n', num_params);
@@ -168,20 +164,50 @@ for candidate_idx = 1:TRAINER_POP
         current_seed = SEED_BASE + seed_count;
         seeds(seed_count) = current_seed;
         
-        % Assign candidate parameters to blocks
-        param_idx = 1;
-        for block_idx = 1:length(Blocks)
-            block_num_params = length(Blocks(block_idx).lower);
-            if block_num_params > 0
-                Blocks(block_idx).parameter = population(candidate_idx, param_idx:param_idx+block_num_params-1);
-                Blocks(block_idx).ParameterAssign();
-                param_idx = param_idx + block_num_params;
-            end
-        end
+        % Create blocks with candidate parameters
+        candidate_blocks = [
+            Block_Population()
+            Block_Tournament(60, 10)
+            Block_Tournament(60, 10)
+            Block_Tournament(60, 10)
+            Block_Exchange(3)
+            Block_Exchange(3)
+            Block_Exchange(3)
+            Block_Exchange(3)
+            Block_Crossover(2, 5)
+            Block_Mutation(5)
+            Block_Selection(30)
+        ];
+        
+        % Assign candidate parameters to blocks using ParameterSet
+        candidate_blocks.ParameterSet(population(candidate_idx, :));
         
         % Run NeuroEA on the problem
         Problem = feval(PROBLEM_CLASS, DIMENSION);
-        [best_obj, ~, ~, ~] = NeuroEA(Problem, Blocks, Graph, INNER_MAX_FE, 1);
+        Problem.maxFE = INNER_MAX_FE;
+        
+        % Create NeuroEA with configured blocks and Graph
+        algo = NeuroEA('parameter', {candidate_blocks, Graph});
+        
+        % Run via PlatEMO interface
+        try
+            algo.Solve(Problem);
+            
+            % Extract best fitness from result
+            if ~isempty(algo.result) && size(algo.result, 2) >= 2
+                final_pop = algo.result{end, 2};
+                if ~isempty(final_pop)
+                    best_obj = min(final_pop.objs);
+                else
+                    best_obj = inf;
+                end
+            else
+                best_obj = inf;
+            end
+        catch err
+            fprintf('      Warning: NeuroEA error: %s\n', err.message);
+            best_obj = inf;
+        end
         
         run_fitnesses = [run_fitnesses; best_obj];
     end
@@ -223,15 +249,7 @@ fprintf('Best parameters (first 5): [%.4f, %.4f, %.4f, %.4f, %.4f, ...]\n', ...
 
 % Assign best parameters to Blocks before saving
 fprintf('\nAssigning best parameters to Blocks...\n');
-param_idx = 1;
-for block_idx = 1:length(Blocks)
-    num_block_params = length(Blocks(block_idx).lower);
-    if num_block_params > 0
-        Blocks(block_idx).parameter = best_params(param_idx:param_idx+num_block_params-1);
-        Blocks(block_idx).ParameterAssign();
-    end
-    param_idx = param_idx + num_block_params;
-end
+Blocks.ParameterSet(best_params);
 
 % Prepare history struct
 trainer_history = struct();

@@ -21,10 +21,12 @@ current_dir = fileparts(mfilename('fullpath'));
 addpath(fullfile(current_dir, 'PlatEMO'));
 addpath(fullfile(current_dir, 'PlatEMO', 'Algorithms'));
 addpath(fullfile(current_dir, 'PlatEMO', 'Algorithms', 'NeuroEA'));
+addpath(fullfile(current_dir, 'PlatEMO', 'Algorithms', 'Utility functions'));
 addpath(fullfile(current_dir, 'PlatEMO', 'Metrics'));
 addpath(fullfile(current_dir, 'PlatEMO', 'Problems'));
 addpath(fullfile(current_dir, 'PlatEMO', 'Problems', 'Single-objective optimization'));
 addpath(fullfile(current_dir, 'PlatEMO', 'Problems', 'Single-objective optimization', 'CEC 2017'));
+addpath(fullfile(current_dir, 'PlatEMO', 'GUI'));
 
 %% ========================================================================
 %% CONFIGURATION - EDIT THESE TO CHANGE TEST PROBLEM
@@ -100,9 +102,28 @@ for run_idx = 1:NUM_TEST_RUNS
     
     % Create problem
     TestProblem = feval(TEST_PROBLEM_CLASS, TEST_DIMENSION);
+    TestProblem.maxFE = TEST_MAX_FE;
     
     % Run NeuroEA with trained parameters
-    [best_obj, ~, ~, ~] = NeuroEA(TestProblem, Blocks, Graph, TEST_MAX_FE, 1);
+    try
+        algo = NeuroEA('parameter', {Blocks, Graph});
+        algo.Solve(TestProblem);
+        
+        % Extract best fitness from result
+        if ~isempty(algo.result) && size(algo.result, 2) >= 2
+            final_pop = algo.result{end, 2};
+            if ~isempty(final_pop)
+                best_obj = min(final_pop.objs);
+            else
+                best_obj = inf;
+            end
+        else
+            best_obj = inf;
+        end
+    catch err
+        fprintf('Warning: NeuroEA error: %s\n', err.message);
+        best_obj = inf;
+    end
     
     test_best_objs = [test_best_objs; best_obj];
     
