@@ -16,6 +16,10 @@
 
 clear all; clc;
 
+%% Disable figure visualization to avoid opening too many windows
+set(0, 'DefaultFigureVisible', 'off');
+close all;
+
 %% Add PlatEMO to path
 current_dir = fileparts(mfilename('fullpath'));
 addpath(fullfile(current_dir, 'PlatEMO'));
@@ -108,6 +112,7 @@ for run_idx = 1:NUM_TEST_RUNS
     try
         algo = NeuroEA('parameter', {Blocks, Graph});
         algo.Solve(TestProblem);
+        close all;  % Close any figures created during solve
         
         % Extract best fitness from result
         if ~isempty(algo.result) && size(algo.result, 2) >= 2
@@ -121,6 +126,7 @@ for run_idx = 1:NUM_TEST_RUNS
             best_obj = inf;
         end
     catch err
+        close all;  % Close any figures created during error
         fprintf('Warning: NeuroEA error: %s\n', err.message);
         best_obj = inf;
     end
